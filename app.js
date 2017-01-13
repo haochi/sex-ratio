@@ -24,7 +24,7 @@ class FusionTableRow {
     }
 }
 
-angular.module("app", ["zingchart-angularjs"])
+angular.module("app", [])
 .constant("GOOGLE_API_KEY", "AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0")
 .constant("MAX_AGE", 85)
 .constant("MIN_AGE", 0)
@@ -136,6 +136,18 @@ angular.module("app", ["zingchart-angularjs"])
 
         return groups;
     }
+
+    calculatePopulationChart([minAge, maxAge], counties) {
+        return this.getAgeGroups(minAge, maxAge).map(({male, female}) => {
+            let totalMalePop = 0;
+            let totalFemalePop = 0;
+            counties.forEach(county => {
+                totalMalePop += county.get(male);
+                totalFemalePop += county.get(female);
+            });
+            return [totalMalePop, totalFemalePop];
+        });
+    };
 })
 .service('chartService', class {
     constructor($sce) {
@@ -202,19 +214,19 @@ angular.module("app", ["zingchart-angularjs"])
     }
 })
 .controller("AppController", function ($scope, $q, $sce, dataManipulationService, mapsService, fusionTableService, countyService, popAgeSexService, chartService, MIN_AGE, MAX_AGE) {
+    // constants
     const ctrl = this;
-
+    const chart = document.querySelector('#chart');
     const map = new google.maps.Map(document.querySelector(".map"), {
         center: {lat: 39.828175, lng: -98.5795},
         zoom: 4
     });
-
     const allAgeGroups = popAgeSexService.getAgeGroups(MIN_AGE, MAX_AGE);
-
     const allAgeGroupsArray = _.chain(allAgeGroups).map(function (ageGroup) {
         return [ageGroup.male, ageGroup.female];
     }).flatten().value();
 
+    // variables
     ctrl.MIN_AGE = MIN_AGE;
     ctrl.MAX_AGE = MAX_AGE;
     ctrl.STEP = 5;
@@ -223,9 +235,9 @@ angular.module("app", ["zingchart-angularjs"])
     ctrl.maxAge = ctrl.MAX_AGE;
 
     ctrl.legend = chartService.legend;
-
     ctrl.selectedCounty = null;
 
+    // methods
     ctrl.enforceMinMaxAge = () => {
         ctrl.minAge = Math.min(ctrl.minAge, ctrl.maxAge);
         ctrl.maxAge = Math.max(ctrl.minAge, ctrl.maxAge);
@@ -235,16 +247,9 @@ angular.module("app", ["zingchart-angularjs"])
         }
     };
 
-    ctrl.calculatePopulationPyramid = (counties) => {
-        return allAgeGroups.map(({male, female}) => {
-            let totalMalePop = 0;
-            let totalFemalePop = 0;
-            counties.forEach(county => {
-                totalMalePop += county.get(male);
-                totalFemalePop += county.get(female);
-            });
-            return [totalMalePop, totalFemalePop];
-        });
+    ctrl.selectCounty = (county) => {
+        ctrl.selectedCounty = county;
+        ctrl.updateChart([MIN_AGE, MAX_AGE], [county]);
     };
 
     ctrl.updateAge = () => {
@@ -266,43 +271,47 @@ angular.module("app", ["zingchart-angularjs"])
             county.get('shape').setOptions({
                 fillColor: chartService.colorizeLegend(ratio)
             });
-
-            county.set('ratio', ratio);
         });
 
-        const popPyramidSeries = ctrl.calculatePopulationPyramid(countyService.getCounties());
-
-        ctrl.populationChart = {
-            "type": "pop-pyramid",
-            "plot": {
-                "stacked": true
-            },
-            "options": {
-                "label-placement": "middle"
-            },
-            "scale-x": {
-                "values": popAgeSexService.getAgeGroupsLabel(MIN_AGE, MAX_AGE)
-            },
-            "scale-y": {
-                "short": true
-            },
-            "series": [
-                {
-                    "data-side": 1,
-                    "text": "Male",
-                    "background-color": "#007DF0 #0055A4",
-                    "values": popPyramidSeries.map(([pop, _]) => pop)
-                },
-                {
-                    "data-side": 2,
-                    "text": "Female",
-                    "background-color": "#94090D #D40D12",
-                    "values": popPyramidSeries.map(([_, pop]) => pop)
-                }
-            ]
-        };
+        ctrl.updateChart([ctrl.minAge, ctrl.maxAge], countyService.getCounties());
     };
 
+    ctrl.setupChart = () => {
+        const chartXLabels = popAgeSexService.getAgeGroupsLabel(MIN_AGE, MAX_AGE);
+        Plotly.newPlot(chart, [{
+            x: chartXLabels,
+            y: [],
+            name: 'Male',
+            type: 'bar'
+        }, {
+            x: chartXLabels,
+            y: [],
+            name: 'Female',
+            type: 'bar'
+        }], {
+            xaxis: {title: 'Age Group'},
+            yaxis: {title: 'Population'},
+            barmode: 'group'
+        });
+
+        window.addEventListener("resize", _.debounce(() => {
+            Plotly.Plots.resize(chart);
+        }, 500));
+    };
+
+    ctrl.updateChart = ([minAge, maxAge], counties) => {
+        const chartXLabels = popAgeSexService.getAgeGroupsLabel(minAge, maxAge);
+        const popPyramidSeries = popAgeSexService.calculatePopulationChart([minAge, maxAge], counties);
+
+        chart.data.forEach((bar, i) => {
+            bar.x = chartXLabels;
+            bar.y = popPyramidSeries.map(set => set[i]);
+        });
+
+        Plotly.redraw(chart);
+    };
+
+    // init
     $q.all([
         fusionTableService.query("SELECT 'GEO.id2', " + allAgeGroupsArray.join(", ") + " FROM 1w7FtanoT1rUm7h10Uj2-UyKMuWDMcSfvFhMUVjY6"),
         fusionTableService.query("SELECT GEO_ID2, geometry, 'State Abbr', 'County Name' FROM 1xdysxZ94uUFIit9eXmnw1fYc6VcQiXhceFd_CVKa")
@@ -324,14 +333,7 @@ angular.module("app", ["zingchart-angularjs"])
             });
 
             shape.addListener("click", () => {
-                ctrl.selectedCounty = county;
-
-                const popPyramidSeries = ctrl.calculatePopulationPyramid([county]);
-
-                ctrl.populationChart.series.forEach((series, index) => {
-                    series.values = popPyramidSeries.map(data => data[index]);
-                });
-
+                ctrl.selectCounty(county);
                 $scope.$digest();
             });
 
@@ -343,6 +345,8 @@ angular.module("app", ["zingchart-angularjs"])
         });
 
         countyService.setCounties(counties);
+
+        ctrl.setupChart();
 
         ctrl.updateAge();
     });

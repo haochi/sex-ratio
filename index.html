@@ -4,9 +4,11 @@
     <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/zingchart/2.5.2/zingchart.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/zingchart/2.5.2/modules/zingchart-populationpyramid.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/zingchart-angularjs/1.2.0/zingchart-angularjs.min.js"></script>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/zingchart/2.5.2/zingchart.min.js"></script>-->
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/zingchart/2.5.2/modules/zingchart-populationpyramid.min.js"></script>-->
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/zingchart-angularjs/1.2.0/zingchart-angularjs.min.js"></script>-->
     <script src="app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
     <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
@@ -20,7 +22,7 @@
         <div class="map-info-container">
             <div class="map section" class="section"></div>
             <div class="map-info section">
-                <zingchart id="chart" zc-json="appCtrl.populationChart" zc-height=600></zingchart>
+                <div id="chart"></div>
             </div>
         </div>
 
