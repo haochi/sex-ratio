@@ -1,0 +1,39 @@
+<!doctype html>
+<html ng-app="app">
+<head>
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular.min.js"></script>
+    <script src="app.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
+    <link rel="stylesheet" href="app.css">
+
+</head>
+<body>
+<div class="app-container" ng-controller="AppController as appCtrl">
+    <div class="map-container">
+        <div id="map" class="section"></div>
+
+        <div class="section">
+            <span class="legend-item" ng-repeat="label in ::appCtrl.legend">
+                <i class="fa fa-square" aria-hidden="true" ng-style="{ color: label.color }"></i>
+                <span ng-bind-html="label.label"></span>
+            </span>
+        </div>
+    </div>
+
+    <div class="control-container">
+        <div class="section">
+            <div class="ageControl">
+                <label>Min Age ({{ appCtrl.minAge }})</label>
+                <input type="range" ng-model="appCtrl.minAge" min="{{ ::appCtrl.MIN_AGE }}" max="{{ appCtrl.MAX_AGE - appCtrl.step }}" step="{{ appCtrl.step }}" ng-change="appCtrl.updateAge()" ng-model-options="{debounce: 100}" />
+            </div>
+            <div class="ageControl">
+                <label>Max Age ({{ appCtrl.maxAge }})</label>
+                <input type="range" ng-model="appCtrl.maxAge" min="{{ appCtrl.MIN_AGE + appCtrl.step }}" max="{{ ::appCtrl.MAX_AGE }}" step="{{ appCtrl.step }}" ng-change="appCtrl.updateAge()" ng-model-options="{debounce: 100}"/>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
