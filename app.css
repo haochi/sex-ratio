@@ -1,14 +1,30 @@
+body {
+    font-family: 'Roboto', sans-serif;
+}
+
 .section {
     margin-bottom: 10px;
 }
 
-#map {
-    width: 100%;
+.legend-item {
+    margin-right: 10px;
+}
+
+.map-info-container {
+    display: flex;
+}
+
+.map-info {
+    flex: 1;
+}
+
+.map {
+    flex: 3;
     height: 600px;
 }
 
-.legend-item {
-    margin-right: 10px;
+#chart {
+    height: 600px;
 }
 
 .ageControl {
@@ -24,7 +40,13 @@
     flex: 9;
 }
 
+
+
 @media (max-width: 1024px) {
+    .map-info-container {
+        flex-direction: column;
+    }
+
     .ageControl label {
         flex: 2;
     }
