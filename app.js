@@ -24,30 +24,7 @@ class FusionTableRow {
     }
 }
 
-class FusionTableQuery {
-    constructor() {
-        this.columns = [];
-        this.table = null;
-    }
-
-    select(columns) {
-        this.columns = columns;
-        return this;
-    }
-
-    from(table) {
-        this.table = table;
-        return this;
-    }
-
-    toString() {
-        const columns = this.columns.map(column => `'${column}'`).join(", ");
-        return `SELECT ${columns} FROM ${this.table}`;
-    }
-}
-
 angular.module("app", ['rzModule', 'ihaochi'])
-.constant("GOOGLE_API_KEY", "AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0")
 .constant("MAX_AGE", 85)
 .constant("MIN_AGE", 0)
 .config(($sceDelegateProvider) => {
@@ -57,18 +34,8 @@ angular.module("app", ['rzModule', 'ihaochi'])
     ]);
 })
 .service("fusionTableService", class {
-    constructor($http, GOOGLE_API_KEY) {
+    constructor($http) {
         this.$http = $http;
-        this.GOOGLE_API_KEY = GOOGLE_API_KEY;
-    }
-
-    query(sql) {
-        return this.$http.jsonp( "https://www.googleapis.com/fusiontables/v2/query", {
-            params: {
-                sql: sql,
-                key: this.GOOGLE_API_KEY
-            }
-        }).then(this.responseToResult);
     }
 
     loadFromFile(url) {
@@ -408,9 +375,9 @@ angular.module("app", ['rzModule', 'ihaochi'])
 
     // init
     $q.all([
-        fusionTableService.loadFromFile("./data/population.json"), // fusionTableService.query(new FusionTableQuery().select(["GEO.id2"].concat(allAgeGroupsArray)).from("1w7FtanoT1rUm7h10Uj2-UyKMuWDMcSfvFhMUVjY6").toString()),
-        fusionTableService.loadFromFile("./data/county-shapes.json"), // fusionTableService.query(new FusionTableQuery().select(["GEO_ID2", "geometry", "State Abbr", "County Name"]).from("1xdysxZ94uUFIit9eXmnw1fYc6VcQiXhceFd_CVKa").toString()),
-        fusionTableService.loadFromFile("./data/state-shapes.json") // fusionTableService.query(new FusionTableQuery().select(["geometry"]).from("17aT9Ud-YnGiXdXEJUyycH2ocUqreOeKGbzCkUw").toString())
+        fusionTableService.loadFromFile("./data/population.json"),
+        fusionTableService.loadFromFile("./data/county-shapes.json"),
+        fusionTableService.loadFromFile("./data/state-shapes.json")
     ]).then(function ([populationResult, countyShapeResult, stateShapeResult]) {
         ctrl.counties = dataManipulationService.join([
             [populationResult, "GEO.id2", allAgeGroupsArray],
