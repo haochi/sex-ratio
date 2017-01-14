@@ -163,35 +163,45 @@ angular.module("app", ['rzModule', 'ihaochi'])
 })
 .service('chartService', class {
     constructor($sce) {
-        this.legend = [{
-            color: "#b2182b",
-            display: $sce.trustAsHtml("&le; 0.95"),
+        const legend = [{
+            display: "&le; 0.93",
+            test: (ratio) => ratio <= 0.93
+        }, {
+            display: "&le; 0.95",
             test: (ratio) => ratio <= 0.95
         }, {
-            color: "#ef8a62",
-            display: $sce.trustAsHtml("&le; 0.97"),
+            display: "&le; 0.97",
             test: (ratio) => ratio <= 0.97
         }, {
-            color: "#fddbc7",
-            display: $sce.trustAsHtml("&le; 0.99"),
+            display: "&le; 0.99",
             test: (ratio) => ratio <= 0.99
         }, {
-            color: "#f7f7f7",
-            display: $sce.trustAsHtml("1"),
-            test: (ratio) => Math.abs(1 - ratio) < 0.01
+            display: "1",
+            test: (ratio) => Math.abs(1 - ratio) < 0.01,
+            color: "#fff"
         }, {
-            color: "#d1e5f0",
-            display: $sce.trustAsHtml("&le; 1.01"),
+            display: "&le; 1.01",
             test: (ratio) => ratio <= 1.01
         }, {
-            color: "#67a9cf",
-            display: $sce.trustAsHtml("&le; 1.03"),
+            display: "&le; 1.03",
             test: (ratio) => ratio <= 1.03
         }, {
-            color: '#2166ac',
-            display: $sce.trustAsHtml("> 1.03"),
-            test: (ratio) => ratio < Infinity
+            display: "&le; 1.05",
+            test: (ratio) => ratio <= 1.05
+        }, {
+            display: "> 1.05",
+            test: (ratio) => ratio > 1.05
         }];
+
+        const color = chroma.scale(["red", "white", "blue"]).domain([0, legend.length]);
+
+        this.legend = legend.map((label, i) => {
+            label.display = $sce.trustAsHtml(label.display);
+            if (!label.color) {
+                label.color = color(i).hex();
+            }
+            return label;
+        });
     }
 
     colorizeLegend(ratio) {
@@ -231,26 +241,53 @@ angular.module("app", ['rzModule', 'ihaochi'])
     const chart = document.querySelector('.map-info-chart');
     const map = new google.maps.Map(document.querySelector(".map"), {
         center: {lat: 39.828175, lng: -98.5795},
-        zoom: 4
+        zoom: 4,
+        styles: [
+            {
+                "featureType": "landscape",
+                "stylers": [
+                    { "visibility": "off" }
+                ]
+            },
+            {
+                "featureType": "road",
+                "stylers": [
+                    { "visibility": "off" }
+                ]
+            },
+            {
+                "featureType": "poi",
+                "stylers": [
+                    { "visibility": "off" }
+                ]
+            },
+            {
+                "stylers": [
+                    {saturation: -100}
+                ]
+            }
+        ]
     });
     const allAgeGroups = popAgeSexService.getAgeGroups(MIN_AGE, MAX_AGE);
-    const allAgeGroupsArray = _.chain(allAgeGroups).map(function (ageGroup) {
-        return [ageGroup.male, ageGroup.female];
-    }).flatten().value();
+    const allAgeGroupsArray = _.chain(allAgeGroups).map(ageGroup => [ageGroup.male, ageGroup.female]).flatten().value();
     const defaultChartTitleTemplate = _.template("<%= location %> Population By Age Group");
     const STEP = 5;
+    const OPACITY = 0.5;
+    const DEFAULT_COUNTY_OPTIONS = { strokeWeight: 0.1, fillOpacity: OPACITY };
+    const HIGHLIGHT_COUNTY_OPTIONS = { strokeWeight: 0.7, fillOpacity: 0.9 };
 
     // variables
-    ctrl.LEGEND_OPACITY = 0.5;
+    ctrl.LEGEND_OPACITY = OPACITY;
 
     ctrl.minAge = MIN_AGE;
     ctrl.maxAge = MAX_AGE;
+    ctrl.highlightRatio = 20;
 
     ctrl.legend = chartService.legend;
     ctrl.selectedCounty = null;
     ctrl.counties = [];
 
-    ctrl.sliderOptions = {
+    ctrl.ageSliderOptions = {
         step: STEP,
         floor: MIN_AGE,
         ceil: MAX_AGE,
@@ -265,9 +302,41 @@ angular.module("app", ['rzModule', 'ihaochi'])
         }
     };
 
+    ctrl.ratioSliderOptions = {
+        floor: 10,
+        ceil: 200,
+        onEnd() {
+            ctrl.updateHighlight();
+        },
+        translate(value) {
+            return value + '%';
+        }
+    };
+
     ctrl.selectCounty = (county) => {
         ctrl.selectedCounty = county;
         ctrl.updateChart(`${county.get('County Name')}, ${county.get('State Abbr')}`, [county]);
+    };
+
+    ctrl.updateHighlight = () => {
+        ctrl.counties.forEach(county => {
+            const ratio = county.get('ratio');
+            const greaterThanHighlightThreshold = Math.abs(1 - ratio) > (ctrl.highlightRatio / 100);
+
+            county.get('shape').setOptions(greaterThanHighlightThreshold ? HIGHLIGHT_COUNTY_OPTIONS : DEFAULT_COUNTY_OPTIONS);
+        });
+    };
+
+    ctrl.calculateRatio = (left, right) => {
+        if (left === right) { // resolve 0 / 0
+            return 1;
+        }
+
+        if (right === 0) { // resolve left / 0
+            return 9000;
+        }
+
+        return left / right;
     };
 
     ctrl.updateAge = () => {
@@ -282,11 +351,13 @@ angular.module("app", ['rzModule', 'ihaochi'])
                 totalFemalePop += county.get(female);
             });
 
-            const ratio = totalMalePop / totalFemalePop;
+            const ratio = ctrl.calculateRatio(totalMalePop, totalFemalePop);
 
             county.set('male', totalMalePop);
             county.set('female', totalFemalePop);
             county.set('ratio', ratio);
+
+            if (!isFinite(ratio)) debugger;
 
             county.get('shape').setOptions({
                 fillColor: chartService.colorizeLegend(ratio)
@@ -294,6 +365,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
         });
 
         ctrl.updateChart("US", ctrl.counties);
+        ctrl.updateHighlight();
     };
 
     ctrl.setupChart = () => {
@@ -302,12 +374,14 @@ angular.module("app", ['rzModule', 'ihaochi'])
             x: chartXLabels,
             y: [],
             name: 'Male',
-            type: 'bar'
+            type: 'bar',
+            marker: { color: chroma(_.last(ctrl.legend).color).luminance(0.3).hex() }
         }, {
             x: chartXLabels,
             y: [],
             name: 'Female',
-            type: 'bar'
+            type: 'bar',
+            marker: { color: chroma(_.first(ctrl.legend).color).luminance(0.3).hex()}
         }], {
             xaxis: {title: 'Age Group'},
             yaxis: {title: 'Population'},
@@ -343,29 +417,13 @@ angular.module("app", ['rzModule', 'ihaochi'])
             [countyShapeResult, "GEO_ID2", ["geometry", "State Abbr", "County Name", "GEO_ID2"]]
         ]);
 
-        stateShapeResult.getData().forEach(state => {
-            const paths = mapsService.kmlToPaths(state.get("geometry"));
-
-            paths.forEach(path => {
-                new google.maps.Polyline({
-                    map,
-                    path,
-                    strokeColor: "#555",
-                    strokeWeight: 1.5
-                });
-            });
-        });
-
         ctrl.counties.forEach(county => {
             const paths = mapsService.kmlToPaths(county.get("geometry"));
 
-            const shape = new google.maps.Polygon({
+            const shape = new google.maps.Polygon(_.assign({
                 map,
-                paths,
-                strokeWeight: 0.2,
-                fillColor: "#FF0000",
-                fillOpacity: ctrl.LEGEND_OPACITY
-            });
+                paths
+            }, DEFAULT_COUNTY_OPTIONS));
 
             shape.addListener("click", () => {
                 ctrl.selectCounty(county);
@@ -386,6 +444,19 @@ angular.module("app", ['rzModule', 'ihaochi'])
 
             allAgeGroupsArray.forEach(ageGroup => {
                 county.set(ageGroup, parseInt(county.get(ageGroup), 10));
+            });
+        });
+
+        stateShapeResult.getData().forEach(state => {
+            const paths = mapsService.kmlToPaths(state.get("geometry"));
+
+            paths.forEach(path => {
+                new google.maps.Polyline({
+                    map,
+                    path,
+                    strokeColor: "#555",
+                    strokeWeight: 1.5
+                });
             });
         });
 
