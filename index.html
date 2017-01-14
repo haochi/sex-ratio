@@ -6,6 +6,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/angularjs-slider/6.0.0/rzslider.min.js"></script>
+    <script src="https://cdn.rawgit.com/haochi/angular-mouse-tooltip/1aabf4a5/dist/angular-mouse-tooltip.min.js"></script>
     <script src="app.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angularjs-slider/6.0.0/rzslider.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
@@ -19,16 +20,27 @@
         <div class="map-info-container">
             <div class="map section" class="section"></div>
             <div class="map-info section">
-                <div id="chart"></div>
+                <div class="map-info-chart"></div>
             </div>
         </div>
 
         <div class="section">
             <span class="legend-item" ng-repeat="label in ::appCtrl.legend">
                 <i class="fa fa-square" aria-hidden="true" ng-style="{ color: label.color, opacity: appCtrl.LEGEND_OPACITY }"></i>
-                <span ng-bind-html="label.label"></span>
+                <span ng-bind-html="label.display"></span>
             </span>
         </div>
+
+        <ihaochi-mouse-tooltip ng-show="appCtrl.hoverCounty" class="mouse-tooltip">
+            <div>{{ appCtrl.hoverCounty.get('County Name') }}, {{ appCtrl.hoverCounty.get('State Abbr') }}</div>
+            <div>
+                {{ appCtrl.hoverCounty.get('male') }} <i class="fa fa-male" aria-hidden="true"></i> :
+                {{ appCtrl.hoverCounty.get('female') }} <i class="fa fa-female" aria-hidden="true"></i>
+            </div>
+            <div>
+                (Ratio: {{ appCtrl.hoverCounty.get('male') / appCtrl.hoverCounty.get('female') * 100 | number:0 }} : 100)
+            </div>
+        </ihaochi-mouse-tooltip>
     </div>
 
     <div class="control-container">

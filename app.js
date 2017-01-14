@@ -46,7 +46,7 @@ class FusionTableQuery {
     }
 }
 
-angular.module("app", ['rzModule'])
+angular.module("app", ['rzModule', 'ihaochi'])
 .constant("GOOGLE_API_KEY", "AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0")
 .constant("MAX_AGE", 85)
 .constant("MIN_AGE", 0)
@@ -164,35 +164,39 @@ angular.module("app", ['rzModule'])
 .service('chartService', class {
     constructor($sce) {
         this.legend = [{
-            ratio: 0.95,
-            color: "#c51b7e",
-            label: $sce.trustAsHtml("&le; 0.95")
+            color: "#b2182b",
+            display: $sce.trustAsHtml("&le; 0.95"),
+            test: (ratio) => ratio <= 0.95
         }, {
-            ratio: 0.97,
-            color: "#e9a3c9",
-            label: $sce.trustAsHtml("&le; 0.97")
+            color: "#ef8a62",
+            display: $sce.trustAsHtml("&le; 0.97"),
+            test: (ratio) => ratio <= 0.97
         }, {
-            ratio: 0.99,
-            color: "#fde0ef",
-            label: $sce.trustAsHtml("&le; 0.99")
+            color: "#fddbc7",
+            display: $sce.trustAsHtml("&le; 0.99"),
+            test: (ratio) => ratio <= 0.99
         }, {
-            ratio: 1,
+            color: "#f7f7f7",
+            display: $sce.trustAsHtml("1"),
+            test: (ratio) => Math.abs(1 - ratio) < 0.01
+        }, {
             color: "#d1e5f0",
-            label: $sce.trustAsHtml("&le; 1")
+            display: $sce.trustAsHtml("&le; 1.01"),
+            test: (ratio) => ratio <= 1.01
         }, {
-            ratio: 1.03,
             color: "#67a9cf",
-            label: $sce.trustAsHtml("&le; 1.03")
+            display: $sce.trustAsHtml("&le; 1.03"),
+            test: (ratio) => ratio <= 1.03
         }, {
-            ratio: Infinity,
-            color: "#2167ac",
-            label: $sce.trustAsHtml("> 1.03")
+            color: '#2166ac',
+            display: $sce.trustAsHtml("> 1.03"),
+            test: (ratio) => ratio < Infinity
         }];
     }
 
     colorizeLegend(ratio) {
         for (let label of this.legend) {
-            if (ratio <= label.ratio) {
+            if (label.test(ratio)) {
                 return label.color;
             }
         }
@@ -224,7 +228,7 @@ angular.module("app", ['rzModule'])
 .controller("AppController", function ($scope, $q, $sce, dataManipulationService, mapsService, fusionTableService, popAgeSexService, chartService, MIN_AGE, MAX_AGE) {
     // constants
     const ctrl = this;
-    const chart = document.querySelector('#chart');
+    const chart = document.querySelector('.map-info-chart');
     const map = new google.maps.Map(document.querySelector(".map"), {
         center: {lat: 39.828175, lng: -98.5795},
         zoom: 4
@@ -278,7 +282,11 @@ angular.module("app", ['rzModule'])
                 totalFemalePop += county.get(female);
             });
 
-            let ratio = totalMalePop / totalFemalePop;
+            const ratio = totalMalePop / totalFemalePop;
+
+            county.set('male', totalMalePop);
+            county.set('female', totalFemalePop);
+            county.set('ratio', ratio);
 
             county.get('shape').setOptions({
                 fillColor: chartService.colorizeLegend(ratio)
@@ -361,6 +369,16 @@ angular.module("app", ['rzModule'])
 
             shape.addListener("click", () => {
                 ctrl.selectCounty(county);
+                $scope.$digest();
+            });
+
+            shape.addListener("mouseover", () => {
+                ctrl.hoverCounty = county;
+                $scope.$digest();
+            });
+
+            shape.addListener("mouseout", () => {
+                ctrl.hoverCounty = null;
                 $scope.$digest();
             });
 
