@@ -209,7 +209,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
         return result;
     }
 })
-.controller("AppController", function ($scope, $q, $sce, dataManipulationService, mapsService, fusionTableService, popAgeSexService, chartService, MIN_AGE, MAX_AGE) {
+.controller("AppController", function ($timeout, $q, $sce, $location, dataManipulationService, mapsService, fusionTableService, popAgeSexService, chartService, MIN_AGE, MAX_AGE) {
     // constants
     const ctrl = this;
     const chart = document.querySelector('.map-info-chart');
@@ -242,6 +242,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
             }
         ]
     });
+    const marker = new google.maps.Marker({ map });
     const allAgeGroups = popAgeSexService.getAgeGroups(MIN_AGE, MAX_AGE);
     const allAgeGroupsArray = _.chain(allAgeGroups).map(ageGroup => [ageGroup.male, ageGroup.female]).flatten().value();
     const defaultChartTitleTemplate = _.template(`<%- location %> Population By Age Group <% if (range) { %> (Ages: <%- range %>) <% } %>`);
@@ -249,7 +250,6 @@ angular.module("app", ['rzModule', 'ihaochi'])
     const OPACITY = 0.5;
     const DEFAULT_COUNTY_OPTIONS = { strokeWeight: 0.1, fillOpacity: OPACITY };
     const HIGHLIGHT_COUNTY_OPTIONS = { strokeWeight: 0.7, fillOpacity: 0.9 };
-    const marker = new google.maps.Marker();
 
     // variables
     ctrl.LEGEND_OPACITY = OPACITY;
@@ -257,17 +257,18 @@ angular.module("app", ['rzModule', 'ihaochi'])
     ctrl.minAge = MIN_AGE;
     ctrl.maxAge = MAX_AGE;
     ctrl.highlightRatio = 20;
+    ctrl.selectedCounty = null;
 
     ctrl.legend = chartService.legend;
-    ctrl.selectedCounty = null;
     ctrl.counties = [];
+    ctrl.loading = false;
 
     ctrl.ageSliderOptions = {
         step: STEP,
         floor: MIN_AGE,
         ceil: MAX_AGE,
         onEnd() {
-            ctrl.updateAge();
+            ctrl.updateUI(ctrl.minAge, ctrl.maxAge, null, ctrl.highlightRatio);
         },
         translate(value, sliderId, label) {
             if (["ceil", "high"].includes(label) && value === MAX_AGE) {
@@ -281,7 +282,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
         floor: 10,
         ceil: 200,
         onEnd() {
-            ctrl.updateHighlight();
+            ctrl.updateUI(ctrl.minAge, ctrl.maxAge, null, ctrl.highlightRatio);
         },
         translate(value) {
             return value + '%';
@@ -290,19 +291,13 @@ angular.module("app", ['rzModule', 'ihaochi'])
 
     ctrl.selectCounty = (county) => {
         ctrl.selectedCounty = county;
-        const bounds = mapsService.getLatlngBoundsFromLatLngs(_.flatten(county.get('shape').getPaths().getArray().map(array => array.getArray())));
-        marker.setMap(map);
-        marker.setPosition(bounds.getCenter());
-        ctrl.updateChart([MIN_AGE, MAX_AGE], `${county.get('County Name')}, ${county.get('State Abbr')}`, [county]);
-    };
 
-    ctrl.updateHighlight = () => {
-        ctrl.counties.forEach(county => {
-            const ratio = county.get('ratio');
-            const greaterThanHighlightThreshold = Math.abs(1 - ratio) > (ctrl.highlightRatio / 100);
+        if (county) {
+            const bounds = mapsService.getLatlngBoundsFromLatLngs(_.flatten(county.get('shape').getPaths().getArray().map(array => array.getArray())));
+            marker.setPosition(bounds.getCenter());
+        }
 
-            county.get('shape').setOptions(greaterThanHighlightThreshold ? HIGHLIGHT_COUNTY_OPTIONS : DEFAULT_COUNTY_OPTIONS);
-        });
+        marker.setVisible(!!county);
     };
 
     ctrl.calculateRatio = (left, right) => {
@@ -335,15 +330,32 @@ angular.module("app", ['rzModule', 'ihaochi'])
             county.set('female', totalFemalePop);
             county.set('ratio', ratio);
 
-            if (!isFinite(ratio)) debugger;
-
             county.get('shape').setOptions({
                 fillColor: chartService.colorizeLegend(ratio)
             });
         });
+    };
 
-        ctrl.updateChart([ctrl.minAge, ctrl.maxAge], "US", ctrl.counties);
+    ctrl.updateHighlight = () => {
+        ctrl.counties.forEach(county => {
+            const ratio = county.get('ratio');
+            const greaterThanHighlightThreshold = Math.abs(1 - ratio) > (ctrl.highlightRatio / 100);
+
+            county.get('shape').setOptions(greaterThanHighlightThreshold ? HIGHLIGHT_COUNTY_OPTIONS : DEFAULT_COUNTY_OPTIONS);
+        });
+    };
+
+    ctrl.updateUI = (minAge, maxAge, county, highlightRatio) => {
+        ctrl.selectCounty(county);
+        ctrl.updateAge(); // sets the ratio
+        ctrl.updateChart();
         ctrl.updateHighlight();
+
+        $location.search('county', county && county.get("GEO_ID2"));
+        $location.search('ratio', highlightRatio);
+        $location.search('minAge', minAge);
+        $location.search('maxAge', maxAge);
+
     };
 
     ctrl.setupChart = () => {
@@ -371,7 +383,25 @@ angular.module("app", ['rzModule', 'ihaochi'])
         }, 500));
     };
 
-    ctrl.updateChart = ([minAge, maxAge], location, counties) => {
+    ctrl.updateChart = () => {
+        let minAge;
+        let maxAge;
+        let counties = [];
+        let location = '';
+        let selectedCounty = ctrl.selectedCounty;
+
+        if (selectedCounty) {
+            counties = [selectedCounty];
+            location = `${selectedCounty.get('County Name')}, ${selectedCounty.get('State Abbr')}`;
+            minAge = MIN_AGE;
+            maxAge = MAX_AGE;
+        } else {
+            counties = ctrl.counties;
+            location = "US";
+            minAge = ctrl.minAge;
+            maxAge = ctrl.maxAge;
+        }
+
         const chartXLabels = popAgeSexService.getAgeGroupsLabel(minAge, maxAge);
         const popPyramidSeries = popAgeSexService.calculatePopulationChart([minAge, maxAge], counties);
         const data = { location, range: null };
@@ -389,7 +419,32 @@ angular.module("app", ['rzModule', 'ihaochi'])
         Plotly.redraw(chart);
     };
 
+    ctrl.setupSearchVariables = () => {
+        const { minAge, maxAge, ratio, county } = $location.search();
+        const resolvedMinAge = parseInt(minAge, 10);
+        const resolveMaxAge = parseInt(maxAge, 10);
+        const resolveRatio = parseInt(ratio, 10);
+        const resolveCounty = _.find(ctrl.counties, c => c.get('GEO_ID2') === county);
+
+        if (Number.isFinite(resolvedMinAge)) {
+            ctrl.minAge = resolvedMinAge;
+        }
+
+        if (Number.isFinite(resolveMaxAge)) {
+            ctrl.maxAge = resolveMaxAge;
+        }
+
+        if (Number.isFinite(resolveRatio)) {
+            ctrl.highlightRatio = resolveRatio;
+        }
+
+        if (resolveCounty) {
+            ctrl.selectedCounty = resolveCounty;
+        }
+    };
+
     // init
+    ctrl.loading = true;
     $q.all([
         fusionTableService.loadFromFile("./data/population.json"),
         fusionTableService.loadFromFile("./data/county-shapes.json"),
@@ -409,18 +464,15 @@ angular.module("app", ['rzModule', 'ihaochi'])
             }, DEFAULT_COUNTY_OPTIONS));
 
             shape.addListener("click", () => {
-                ctrl.selectCounty(county);
-                $scope.$digest();
+                $timeout(() => ctrl.updateUI(ctrl.minAge, ctrl.maxAge, county, ctrl.highlightRatio));
             });
 
             shape.addListener("mouseover", () => {
-                ctrl.hoverCounty = county;
-                $scope.$digest();
+                $timeout(() => ctrl.hoverCounty = county);
             });
 
             shape.addListener("mouseout", () => {
-                ctrl.hoverCounty = null;
-                $scope.$digest();
+                $timeout(() => ctrl.hoverCounty = null);
             });
 
             county.set("shape", shape);
@@ -443,8 +495,11 @@ angular.module("app", ['rzModule', 'ihaochi'])
             });
         });
 
+        ctrl.setupSearchVariables();
         ctrl.setupChart();
 
-        ctrl.updateAge();
+        ctrl.updateUI(ctrl.minAge, ctrl.maxAge, ctrl.selectedCounty, ctrl.highlightRatio);
+
+        ctrl.loading = false;
     });
 });

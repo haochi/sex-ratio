@@ -17,6 +17,10 @@
 </head>
 <body>
 <div class="app-container" ng-controller="AppController as appCtrl">
+    <div class="section loading" ng-if="appCtrl.loading">
+        <img src="http://i.imgur.com/UQ7Eh0b.gif" alt="Loading ..." />
+        <h2>Loading ...</h2>
+    </div>
     <div class="map-container">
         <div class="map-info-container">
             <div class="map section" class="section"></div>
