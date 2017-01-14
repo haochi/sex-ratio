@@ -46,7 +46,7 @@ class FusionTableQuery {
     }
 }
 
-angular.module("app", [])
+angular.module("app", ['rzModule'])
 .constant("GOOGLE_API_KEY", "AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0")
 .constant("MAX_AGE", 85)
 .constant("MIN_AGE", 0)
@@ -234,30 +234,30 @@ angular.module("app", [])
         return [ageGroup.male, ageGroup.female];
     }).flatten().value();
     const defaultChartTitleTemplate = _.template("<%= location %> Population By Age Group");
+    const STEP = 5;
 
     // variables
-    ctrl.MIN_AGE = MIN_AGE;
-    ctrl.MAX_AGE = MAX_AGE;
-    ctrl.STEP = 5;
+    ctrl.LEGEND_OPACITY = 0.5;
 
-    ctrl.minAge = ctrl.MIN_AGE;
-    ctrl.maxAge = ctrl.MAX_AGE;
+    ctrl.minAge = MIN_AGE;
+    ctrl.maxAge = MAX_AGE;
 
     ctrl.legend = chartService.legend;
     ctrl.selectedCounty = null;
     ctrl.counties = [];
 
-    // methods
-    ctrl.enforceMinMaxAge = () => {
-        ctrl.minAge = Math.min(ctrl.minAge, ctrl.maxAge);
-        ctrl.maxAge = Math.max(ctrl.minAge, ctrl.maxAge);
-
-        if (ctrl.minAge === MAX_AGE) {
-            ctrl.minAge -= ctrl.STEP;
-        }
-
-        if (ctrl.minAge === ctrl.maxAge) {
-            ctrl.maxAge += ctrl.STEP;
+    ctrl.sliderOptions = {
+        step: STEP,
+        floor: MIN_AGE,
+        ceil: MAX_AGE,
+        onEnd() {
+            ctrl.updateAge();
+        },
+        translate(value, sliderId, label) {
+            if (["ceil", "high"].includes(label) && value === MAX_AGE) {
+                return value + "+";
+            }
+            return value;
         }
     };
 
@@ -267,8 +267,6 @@ angular.module("app", [])
     };
 
     ctrl.updateAge = () => {
-        ctrl.enforceMinMaxAge();
-
         const ageGroups = popAgeSexService.getAgeGroups(ctrl.minAge, ctrl.maxAge);
 
         ctrl.counties.forEach(county => {
@@ -358,7 +356,7 @@ angular.module("app", [])
                 paths,
                 strokeWeight: 0.2,
                 fillColor: "#FF0000",
-                fillOpacity: 0.5
+                fillOpacity: ctrl.LEGEND_OPACITY
             });
 
             shape.addListener("click", () => {

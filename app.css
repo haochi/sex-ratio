@@ -1,5 +1,5 @@
 body {
-    font-family: 'Roboto', sans-serif;
+    font-family: "Open Sans","Helvetica Bold","Helvetica", Arial;
 }
 
 .section {
@@ -27,33 +27,8 @@ body {
     height: 600px;
 }
 
-.ageControl {
-    display: flex;
-    margin-bottom: 10px;
-}
-
-.ageControl label {
-    flex: 1;
-}
-
-.ageControl input {
-    flex: 9;
-}
-
-
-
 @media (max-width: 1024px) {
     .map-info-container {
         flex-direction: column;
-    }
-
-    .ageControl label {
-        flex: 2;
-    }
-}
-
-@media (max-width: 640px) {
-    .ageControl label {
-        flex: 3;
     }
 }
