@@ -353,13 +353,13 @@ angular.module("app", ['rzModule', 'ihaochi'])
             y: [],
             name: 'Male',
             type: 'bar',
-            marker: { color: chroma(_.last(ctrl.legend).color).luminance(0.3).hex() }
+            marker: { color: chroma(_.last(ctrl.legend).color).alpha(ctrl.LEGEND_OPACITY).css() }
         }, {
             x: chartXLabels,
             y: [],
             name: 'Female',
             type: 'bar',
-            marker: { color: chroma(_.first(ctrl.legend).color).luminance(0.3).hex()}
+            marker: { color: chroma(_.first(ctrl.legend).color).alpha(ctrl.LEGEND_OPACITY).css()}
         }], {
             xaxis: {title: 'Age Group'},
             yaxis: {title: 'Population'},
