@@ -24,6 +24,28 @@ class FusionTableRow {
     }
 }
 
+class FusionTableQuery {
+    constructor() {
+        this.columns = [];
+        this.table = null;
+    }
+
+    select(columns) {
+        this.columns = columns;
+        return this;
+    }
+
+    from(table) {
+        this.table = table;
+        return this;
+    }
+
+    toString() {
+        const columns = this.columns.map(column => `'${column}'`).join(", ");
+        return `SELECT ${columns} FROM ${this.table}`;
+    }
+}
+
 angular.module("app", [])
 .constant("GOOGLE_API_KEY", "AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0")
 .constant("MAX_AGE", 85)
@@ -39,19 +61,22 @@ angular.module("app", [])
         this.$http = $http;
         this.GOOGLE_API_KEY = GOOGLE_API_KEY;
     }
+
     query(sql) {
         return this.$http.jsonp( "https://www.googleapis.com/fusiontables/v2/query", {
             params: {
                 sql: sql,
                 key: this.GOOGLE_API_KEY
             }
-        }).then(function (response) {
-            return new FusionTableResult(response.data);
-        });
+        }).then(this.responseToResult);
     }
 
-    escapeColumnName(column) {
-        return `"${column}"`;
+    loadFromFile(url) {
+        return this.$http.get(url).then(this.responseToResult);
+    }
+
+    responseToResult(response) {
+        return new FusionTableResult(response.data);
     }
 })
 .service("mapsService", class {
@@ -74,19 +99,6 @@ angular.module("app", [])
             .map(this.geometryToArray)
             .flatten()
             .value();
-    }
-})
-.service("countyService", class {
-    constructor() {
-        this.counties = [];
-    }
-
-    setCounties(counties) {
-        this.counties = counties;
-    }
-
-    getCounties() {
-        return this.counties;
     }
 })
 .service("popAgeSexService", class {
@@ -187,19 +199,15 @@ angular.module("app", [])
     }
 })
 .service("dataManipulationService", class {
-    resolveJoinArrayArgument([set, primaryKey, columnsRequested]) {
-        return [set, primaryKey, columnsRequested];
-    }
-
     join([s1, s2]) {
-        const [s1Table, s1Primary, s1Columns] = this.resolveJoinArrayArgument(s1);
-        const [s2Table, s2Primary, s2Columns] = this.resolveJoinArrayArgument(s2);
+        const [s1Table, s1JoinKey, s1Columns] = s1;
+        const [s2Table, s2JoinKey, s2Columns] = s2;
 
-        const s2Map = new Map(s2Table.getData().map(record => [record.get(s2Primary), record]));
+        const s2Map = new Map(s2Table.getData().map(record => [record.get(s2JoinKey), record]));
         const result = [];
 
         s1Table.getData().forEach(s1Record => {
-            const id = s1Record.get(s1Primary);
+            const id = s1Record.get(s1JoinKey);
             if (s2Map.has(id)) {
                 const record = new Map();
                 const s2Record = s2Map.get(id);
@@ -213,7 +221,7 @@ angular.module("app", [])
         return result;
     }
 })
-.controller("AppController", function ($scope, $q, $sce, dataManipulationService, mapsService, fusionTableService, countyService, popAgeSexService, chartService, MIN_AGE, MAX_AGE) {
+.controller("AppController", function ($scope, $q, $sce, dataManipulationService, mapsService, fusionTableService, popAgeSexService, chartService, MIN_AGE, MAX_AGE) {
     // constants
     const ctrl = this;
     const chart = document.querySelector('#chart');
@@ -225,6 +233,7 @@ angular.module("app", [])
     const allAgeGroupsArray = _.chain(allAgeGroups).map(function (ageGroup) {
         return [ageGroup.male, ageGroup.female];
     }).flatten().value();
+    const defaultChartTitleTemplate = _.template("<%= location %> Population By Age Group");
 
     // variables
     ctrl.MIN_AGE = MIN_AGE;
@@ -236,11 +245,16 @@ angular.module("app", [])
 
     ctrl.legend = chartService.legend;
     ctrl.selectedCounty = null;
+    ctrl.counties = [];
 
     // methods
     ctrl.enforceMinMaxAge = () => {
         ctrl.minAge = Math.min(ctrl.minAge, ctrl.maxAge);
         ctrl.maxAge = Math.max(ctrl.minAge, ctrl.maxAge);
+
+        if (ctrl.minAge === MAX_AGE) {
+            ctrl.minAge -= ctrl.STEP;
+        }
 
         if (ctrl.minAge === ctrl.maxAge) {
             ctrl.maxAge += ctrl.STEP;
@@ -249,7 +263,7 @@ angular.module("app", [])
 
     ctrl.selectCounty = (county) => {
         ctrl.selectedCounty = county;
-        ctrl.updateChart([MIN_AGE, MAX_AGE], [county]);
+        ctrl.updateChart(`${county.get('County Name')}, ${county.get('State Abbr')}`, [county]);
     };
 
     ctrl.updateAge = () => {
@@ -257,7 +271,7 @@ angular.module("app", [])
 
         const ageGroups = popAgeSexService.getAgeGroups(ctrl.minAge, ctrl.maxAge);
 
-        countyService.getCounties().forEach(county => {
+        ctrl.counties.forEach(county => {
             let totalMalePop = 0;
             let totalFemalePop = 0;
 
@@ -273,7 +287,7 @@ angular.module("app", [])
             });
         });
 
-        ctrl.updateChart([ctrl.minAge, ctrl.maxAge], countyService.getCounties());
+        ctrl.updateChart("US", ctrl.counties);
     };
 
     ctrl.setupChart = () => {
@@ -299,10 +313,11 @@ angular.module("app", [])
         }, 500));
     };
 
-    ctrl.updateChart = ([minAge, maxAge], counties) => {
-        const chartXLabels = popAgeSexService.getAgeGroupsLabel(minAge, maxAge);
-        const popPyramidSeries = popAgeSexService.calculatePopulationChart([minAge, maxAge], counties);
+    ctrl.updateChart = (location, counties) => {
+        const chartXLabels = popAgeSexService.getAgeGroupsLabel(MIN_AGE, MAX_AGE);
+        const popPyramidSeries = popAgeSexService.calculatePopulationChart([MIN_AGE, MAX_AGE], counties);
 
+        chart.layout.title = defaultChartTitleTemplate({ location });
         chart.data.forEach((bar, i) => {
             bar.x = chartXLabels;
             bar.y = popPyramidSeries.map(set => set[i]);
@@ -313,15 +328,29 @@ angular.module("app", [])
 
     // init
     $q.all([
-        fusionTableService.query("SELECT 'GEO.id2', " + allAgeGroupsArray.join(", ") + " FROM 1w7FtanoT1rUm7h10Uj2-UyKMuWDMcSfvFhMUVjY6"),
-        fusionTableService.query("SELECT GEO_ID2, geometry, 'State Abbr', 'County Name' FROM 1xdysxZ94uUFIit9eXmnw1fYc6VcQiXhceFd_CVKa")
-    ]).then(function ([populationResult, shapeResult]) {
-        const counties = dataManipulationService.join([
+        fusionTableService.loadFromFile("./data/population.json"), // fusionTableService.query(new FusionTableQuery().select(["GEO.id2"].concat(allAgeGroupsArray)).from("1w7FtanoT1rUm7h10Uj2-UyKMuWDMcSfvFhMUVjY6").toString()),
+        fusionTableService.loadFromFile("./data/county-shapes.json"), // fusionTableService.query(new FusionTableQuery().select(["GEO_ID2", "geometry", "State Abbr", "County Name"]).from("1xdysxZ94uUFIit9eXmnw1fYc6VcQiXhceFd_CVKa").toString()),
+        fusionTableService.loadFromFile("./data/state-shapes.json") // fusionTableService.query(new FusionTableQuery().select(["geometry"]).from("17aT9Ud-YnGiXdXEJUyycH2ocUqreOeKGbzCkUw").toString())
+    ]).then(function ([populationResult, countyShapeResult, stateShapeResult]) {
+        ctrl.counties = dataManipulationService.join([
             [populationResult, "GEO.id2", allAgeGroupsArray],
-            [shapeResult, "GEO_ID2", ["geometry", "State Abbr", "County Name", "GEO_ID2"]]
+            [countyShapeResult, "GEO_ID2", ["geometry", "State Abbr", "County Name", "GEO_ID2"]]
         ]);
 
-        counties.forEach(county => {
+        stateShapeResult.getData().forEach(state => {
+            const paths = mapsService.kmlToPaths(state.get("geometry"));
+
+            paths.forEach(path => {
+                new google.maps.Polyline({
+                    map,
+                    path,
+                    strokeColor: "#555",
+                    strokeWeight: 1.5
+                });
+            });
+        });
+
+        ctrl.counties.forEach(county => {
             const paths = mapsService.kmlToPaths(county.get("geometry"));
 
             const shape = new google.maps.Polygon({
@@ -329,7 +358,7 @@ angular.module("app", [])
                 paths,
                 strokeWeight: 0.2,
                 fillColor: "#FF0000",
-                fillOpacity: 0.7
+                fillOpacity: 0.5
             });
 
             shape.addListener("click", () => {
@@ -343,8 +372,6 @@ angular.module("app", [])
                 county.set(ageGroup, parseInt(county.get(ageGroup), 10));
             });
         });
-
-        countyService.setCounties(counties);
 
         ctrl.setupChart();
 
