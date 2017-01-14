@@ -53,6 +53,13 @@ angular.module("app", ['rzModule', 'ihaochi'])
         });
     }
 
+    getLatlngBoundsFromLatLngs(latlngs) {
+        const bounds = new google.maps.LatLngBounds();
+        latlngs.forEach(latlng => bounds.extend(latlng));
+
+        return bounds;
+    }
+
     kmlToPaths(kml) {
         var geometries = [];
 
@@ -144,7 +151,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
             test: (ratio) => ratio <= 0.99
         }, {
             display: "1",
-            test: (ratio) => Math.abs(1 - ratio) < 0.01,
+            test: (ratio) => Math.abs(1 - ratio) < 0.009,
             color: "#fff"
         }, {
             display: "&le; 1.01",
@@ -237,11 +244,12 @@ angular.module("app", ['rzModule', 'ihaochi'])
     });
     const allAgeGroups = popAgeSexService.getAgeGroups(MIN_AGE, MAX_AGE);
     const allAgeGroupsArray = _.chain(allAgeGroups).map(ageGroup => [ageGroup.male, ageGroup.female]).flatten().value();
-    const defaultChartTitleTemplate = _.template("<%= location %> Population By Age Group");
+    const defaultChartTitleTemplate = _.template(`<%- location %> Population By Age Group <% if (range) { %> (Ages: <%- range %>) <% } %>`);
     const STEP = 5;
     const OPACITY = 0.5;
     const DEFAULT_COUNTY_OPTIONS = { strokeWeight: 0.1, fillOpacity: OPACITY };
     const HIGHLIGHT_COUNTY_OPTIONS = { strokeWeight: 0.7, fillOpacity: 0.9 };
+    const marker = new google.maps.Marker();
 
     // variables
     ctrl.LEGEND_OPACITY = OPACITY;
@@ -282,7 +290,10 @@ angular.module("app", ['rzModule', 'ihaochi'])
 
     ctrl.selectCounty = (county) => {
         ctrl.selectedCounty = county;
-        ctrl.updateChart(`${county.get('County Name')}, ${county.get('State Abbr')}`, [county]);
+        const bounds = mapsService.getLatlngBoundsFromLatLngs(_.flatten(county.get('shape').getPaths().getArray().map(array => array.getArray())));
+        marker.setMap(map);
+        marker.setPosition(bounds.getCenter());
+        ctrl.updateChart([MIN_AGE, MAX_AGE], `${county.get('County Name')}, ${county.get('State Abbr')}`, [county]);
     };
 
     ctrl.updateHighlight = () => {
@@ -331,7 +342,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
             });
         });
 
-        ctrl.updateChart("US", ctrl.counties);
+        ctrl.updateChart([ctrl.minAge, ctrl.maxAge], "US", ctrl.counties);
         ctrl.updateHighlight();
     };
 
@@ -360,11 +371,16 @@ angular.module("app", ['rzModule', 'ihaochi'])
         }, 500));
     };
 
-    ctrl.updateChart = (location, counties) => {
-        const chartXLabels = popAgeSexService.getAgeGroupsLabel(MIN_AGE, MAX_AGE);
-        const popPyramidSeries = popAgeSexService.calculatePopulationChart([MIN_AGE, MAX_AGE], counties);
+    ctrl.updateChart = ([minAge, maxAge], location, counties) => {
+        const chartXLabels = popAgeSexService.getAgeGroupsLabel(minAge, maxAge);
+        const popPyramidSeries = popAgeSexService.calculatePopulationChart([minAge, maxAge], counties);
+        const data = { location, range: null };
 
-        chart.layout.title = defaultChartTitleTemplate({ location });
+        if (minAge !== MIN_AGE || maxAge !== MAX_AGE) {
+            data.range = `${minAge} to ${maxAge}`;
+        }
+
+        chart.layout.title = defaultChartTitleTemplate(data);
         chart.data.forEach((bar, i) => {
             bar.x = chartXLabels;
             bar.y = popPyramidSeries.map(set => set[i]);
