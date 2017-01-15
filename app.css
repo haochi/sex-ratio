@@ -7,19 +7,10 @@ body {
 }
 
 .legend-item {
-    margin-right: 10px;
-}
-
-.map-info-container {
-    display: flex;
-}
-
-.map-info {
-    flex: 3;
+    margin-right: 5px;
 }
 
 .map {
-    flex: 3;
     height: 600px;
 }
 
