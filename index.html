@@ -1,18 +1,14 @@
 <!doctype html>
 <html ng-app="app">
 <head>
-    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0"></script>
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/angularjs-slider/6.0.0/rzslider.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/1.2.1/chroma.min.js"></script>
-    <script src="https://cdn.rawgit.com/haochi/angular-mouse-tooltip/1aabf4a5/dist/angular-mouse-tooltip.min.js"></script>
-    <script src="app.js"></script>
+    <title>US County Level Sex Ratio By Age Group</title>
+    <meta property="og:url" content="http://ihaochi.com/us-county-level-sex-ratio-by-age-group" />
+    <meta property="og:title" content="US County Level Sex Ratio By Age Group" />
+    <meta property="og:image" content="http://ihaochi.com/us-county-level-sex-ratio-by-age-group/screenshot.png" />
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angularjs-slider/6.0.0/rzslider.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
     <link rel="stylesheet" href="app.css">
-
 </head>
 <body>
 <div class="app-container" ng-controller="AppController as appCtrl">
@@ -57,13 +53,46 @@
                 rz-slider-model="appCtrl.minAge"
                 rz-slider-high="appCtrl.maxAge"
                 rz-slider-options="appCtrl.ageSliderOptions"></rzslider>
+        </div>
         <div class="section">
             <h3>Highlight Counties with Sex Ratio Disparity Greater Than (For Given Age Range)</h3>
             <rzslider
-                    rz-slider-model="appCtrl.highlightRatio"
-                    rz-slider-options="appCtrl.ratioSliderOptions"></rzslider>
+                rz-slider-model="appCtrl.highlightRatio"
+                rz-slider-options="appCtrl.ratioSliderOptions"></rzslider>
         </div>
     </div>
 </div>
+
+<div class="section">
+    <div class="share-buttons">
+        <div class="share-button">
+            <iframe
+                src="https://platform.twitter.com/widgets/tweet_button.html?size=l&url=http%3A%2F%2Fihaochi.com%2Fus-county-level-sex-ratio-by-age-group"
+                width="140"
+                height="28"
+                title="Twitter Tweet Button">
+            </iframe>
+        </div>
+        <div class="share-button">
+            <iframe
+                src="https://www.facebook.com/plugins/share_button.php?layout=button&size=large&mobile_iframe=true&width=73&height=28&href=http%3A%2F%2Fihaochi.com%2Fus-county-level-sex-ratio-by-age-group"
+                width="73"
+                height="28"
+                scrolling="no"
+                frameborder="0"
+                allowTransparency="true">
+            </iframe>
+        </div>
+    </div>
+</div>
+
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDsduO715MGz0asWUbZfkqGo3EyObWpY-0"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.6.1/angular.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/angularjs-slider/6.0.0/rzslider.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/1.2.1/chroma.min.js"></script>
+<script src="https://cdn.rawgit.com/haochi/angular-mouse-tooltip/1aabf4a5/dist/angular-mouse-tooltip.min.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
