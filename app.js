@@ -273,6 +273,8 @@ angular.module("app", ['rzModule', 'ihaochi'])
         translate(value, sliderId, label) {
             if (["ceil", "high"].includes(label) && value === MAX_AGE) {
                 return value + "+";
+            } else if ("high" === label) {
+                return value - 1;
             }
             return value;
         }
