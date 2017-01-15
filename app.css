@@ -1,5 +1,7 @@
 body {
-    font-family: "Helvetica Bold","Helvetica", Arial;
+    font-family: "Helvetica Bold", "Helvetica", Arial;
+    max-width: 1024px;
+    margin: auto;
 }
 
 .section {
@@ -14,7 +16,7 @@ body {
     height: 600px;
 }
 
-.map-info-chart {
+.chart {
     height: 600px;
 }
 
@@ -55,10 +57,4 @@ body {
 .share-button iframe {
     border: 0;
     overflow: hidden;
-}
-
-@media (max-width: 1024px) {
-    .map-info-container {
-        flex-direction: column;
-    }
 }

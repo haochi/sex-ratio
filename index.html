@@ -7,6 +7,7 @@
     <meta property="og:description" content="There are counties like Bent, Colorado where men in their 20s outnumber women 672 to 100." />
     <meta property="og:image" content="http://ihaochi.com/us-county-level-sex-ratio-by-age-group/screenshot.png" />
     <meta property="fb:app_id" content="1781563628827046" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angularjs-slider/6.0.0/rzslider.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
@@ -35,25 +36,19 @@
         </div>
     </div>
 
-    <div class="map-container">
-        <div class="map-info-container">
-            <div class="section">
-                <div class="map"></div>
-                <div class="section">
-                    <span>Ratio (male/female):</span>
-                    <span class="legend-item" ng-repeat="label in ::appCtrl.legend">
-                        <span class="fa-stack">
-                            <i class="fa fa-circle-thin fa-stack-2x"></i>
-                            <i class="fa fa-circle fa-stack-1x" aria-hidden="true" ng-style="{ color: label.color, opacity: appCtrl.LEGEND_OPACITY }"></i>
-                        </span>
-                        <span ng-bind-html="label.display"></span>
-                    </span>
-                </div>
-            </div>
-            <div class="map-info section">
-                <div class="map-info-chart"></div>
-            </div>
+    <div class="display-container">
+        <div class="section map"></div>
+        <div class="section">
+            <span>Ratio (male/female):</span>
+            <span class="legend-item" ng-repeat="label in ::appCtrl.legend">
+                <span class="fa-stack">
+                    <i class="fa fa-circle-thin fa-stack-2x"></i>
+                    <i class="fa fa-circle fa-stack-1x" aria-hidden="true" ng-style="{ color: label.color, opacity: appCtrl.LEGEND_OPACITY }"></i>
+                </span>
+                <span ng-bind-html="label.display"></span>
+            </span>
         </div>
+        <div class="section chart"></div>
 
         <ihaochi-mouse-tooltip ng-show="appCtrl.hoverCounty" class="mouse-tooltip">
             <div>{{ appCtrl.hoverCounty.get('County Name') }}, {{ appCtrl.hoverCounty.get('State Abbr') }}</div>

@@ -123,6 +123,13 @@ angular.module("app", ['rzModule', 'ihaochi'])
         return groups;
     }
 
+    displayMaxAge(age) {
+        if (age === this.MAX_AGE) {
+            return age + "+";
+        }
+        return age - 1;
+    }
+
     calculatePopulationChart([minAge, maxAge], counties) {
         return this.getAgeGroups(minAge, maxAge).map(({male, female}) => {
             let totalMalePop = 0;
@@ -212,7 +219,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
 .controller("AppController", function ($timeout, $q, $sce, $location, dataManipulationService, mapsService, fusionTableService, popAgeSexService, chartService, MIN_AGE, MAX_AGE) {
     // constants
     const ctrl = this;
-    const chart = document.querySelector('.map-info-chart');
+    const chart = document.querySelector('.chart');
     const map = new google.maps.Map(document.querySelector(".map"), {
         center: {lat: 39.828175, lng: -98.5795},
         zoom: 4,
@@ -249,7 +256,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
     const STEP = 5;
     const OPACITY = 0.5;
     const DEFAULT_COUNTY_OPTIONS = { strokeWeight: 0.1, fillOpacity: OPACITY };
-    const HIGHLIGHT_COUNTY_OPTIONS = { strokeWeight: 0.7, fillOpacity: 0.9 };
+    const HIGHLIGHT_COUNTY_OPTIONS = { strokeWeight: 1, fillOpacity: 0.9 };
 
     // variables
     ctrl.LEGEND_OPACITY = OPACITY;
@@ -271,10 +278,8 @@ angular.module("app", ['rzModule', 'ihaochi'])
             ctrl.updateUI(ctrl.minAge, ctrl.maxAge, null, ctrl.highlightRatio);
         },
         translate(value, sliderId, label) {
-            if (["ceil", "high"].includes(label) && value === MAX_AGE) {
-                return value + "+";
-            } else if ("high" === label) {
-                return value - 1;
+            if (["ceil", "high"].includes(label)) {
+                return popAgeSexService.displayMaxAge(value);
             }
             return value;
         }
@@ -409,7 +414,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
         const data = { location, range: null };
 
         if (minAge !== MIN_AGE || maxAge !== MAX_AGE) {
-            data.range = `${minAge} to ${maxAge}`;
+            data.range = `${minAge} to ${popAgeSexService.displayMaxAge(maxAge)}`;
         }
 
         chart.layout.title = defaultChartTitleTemplate(data);
