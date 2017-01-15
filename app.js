@@ -1,6 +1,6 @@
 class FusionTableResult {
     constructor(result) {
-        var columnsLookup = _.invert(result.columns);
+        const columnsLookup = _.invert(result.columns);
         this.rows = result.rows.map(row => new FusionTableRow(row, columnsLookup));
     }
 
@@ -47,6 +47,41 @@ angular.module("app", ['rzModule', 'ihaochi'])
     }
 })
 .service("mapsService", class {
+    constructor($document) {
+        this.map = new google.maps.Map($document[0].querySelector(".map"), {
+            center: { lat: 39.828175, lng: -98.5795 },
+            zoom: 4,
+            disableDefaultUI: true,
+            zoomControl: true,
+            styles: [
+                {
+                    "featureType": "landscape",
+                    "stylers": [
+                        { "visibility": "off" }
+                    ]
+                },
+                {
+                    "featureType": "road",
+                    "stylers": [
+                        { "visibility": "off" }
+                    ]
+                },
+                {
+                    "featureType": "poi",
+                    "stylers": [
+                        { "visibility": "off" }
+                    ]
+                },
+                {
+                    "stylers": [
+                        { "saturation": -100 }
+                    ]
+                }
+            ]
+        });
+        this.marker = new google.maps.Marker({ map: this.map });
+    }
+
     geometryToArray(geometry) {
         return geometry.coordinates.map(coordinate => {
             return coordinate.map(([lng, lat]) => ({ lat, lng}));
@@ -61,7 +96,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
     }
 
     kmlToPaths(kml) {
-        var geometries = [];
+        let geometries = [];
 
         if (kml.geometry) {
             geometries = [kml.geometry];
@@ -81,8 +116,8 @@ angular.module("app", ['rzModule', 'ihaochi'])
     }
 
     generateRangeKey(sex, from, to) {
-        var prefix = "est72015sex";
-        var withoutTo = prefix + sex + "_age" + from;
+        const prefix = "est72015sex";
+        const withoutTo = prefix + sex + "_age" + from;
          if (to) {
             return withoutTo + "to" + to;
          } else {
@@ -143,7 +178,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
     };
 })
 .service('chartService', class {
-    constructor($sce) {
+    constructor($sce, $window, $document) {
         const legend = [{
             display: "&le; 0.93",
             test: (ratio) => ratio <= 0.93
@@ -183,6 +218,50 @@ angular.module("app", ['rzModule', 'ihaochi'])
             }
             return label;
         });
+        this.chart = $document[0].querySelector('.chart');
+
+        this.$window = $window;
+    }
+
+    getChart() {
+        return this.chart;
+    }
+
+    setupChart(xLabels, opacity) {
+        const chart = this.getChart();
+
+        Plotly.newPlot(chart, [{
+            x: xLabels,
+            y: [],
+            name: 'Male',
+            type: 'bar',
+            marker: { color: chroma(_.last(this.legend).color).alpha(opacity).css() }
+        }, {
+            x: xLabels,
+            y: [],
+            name: 'Female',
+            type: 'bar',
+            marker: { color: chroma(_.first(this.legend).color).alpha(opacity).css()}
+        }], {
+            xaxis: {title: 'Age Group'},
+            yaxis: {title: 'Population'},
+            barmode: 'group'
+        });
+
+        this.$window.addEventListener("resize", _.debounce(() => {
+            Plotly.Plots.resize(chart);
+        }, 500));
+    }
+
+    redrawChart(title, xLabels, data) {
+        const chart = this.getChart();
+        chart.layout.title = title;
+        chart.data.forEach((bar, i) => {
+            bar.x = xLabels;
+            bar.y = data.map(set => set[i]);
+        });
+
+        Plotly.redraw(chart);
     }
 
     colorizeLegend(ratio) {
@@ -219,37 +298,6 @@ angular.module("app", ['rzModule', 'ihaochi'])
 .controller("AppController", function ($timeout, $q, $sce, $location, dataManipulationService, mapsService, fusionTableService, popAgeSexService, chartService, MIN_AGE, MAX_AGE) {
     // constants
     const ctrl = this;
-    const chart = document.querySelector('.chart');
-    const map = new google.maps.Map(document.querySelector(".map"), {
-        center: {lat: 39.828175, lng: -98.5795},
-        zoom: 4,
-        styles: [
-            {
-                "featureType": "landscape",
-                "stylers": [
-                    { "visibility": "off" }
-                ]
-            },
-            {
-                "featureType": "road",
-                "stylers": [
-                    { "visibility": "off" }
-                ]
-            },
-            {
-                "featureType": "poi",
-                "stylers": [
-                    { "visibility": "off" }
-                ]
-            },
-            {
-                "stylers": [
-                    {saturation: -100}
-                ]
-            }
-        ]
-    });
-    const marker = new google.maps.Marker({ map });
     const allAgeGroups = popAgeSexService.getAgeGroups(MIN_AGE, MAX_AGE);
     const allAgeGroupsArray = _.chain(allAgeGroups).map(ageGroup => [ageGroup.male, ageGroup.female]).flatten().value();
     const defaultChartTitleTemplate = _.template(`<%- location %> Population By Age Group <% if (range) { %> (Ages: <%- range %>) <% } %>`);
@@ -301,10 +349,10 @@ angular.module("app", ['rzModule', 'ihaochi'])
 
         if (county) {
             const bounds = mapsService.getLatlngBoundsFromLatLngs(_.flatten(county.get('shape').getPaths().getArray().map(array => array.getArray())));
-            marker.setPosition(bounds.getCenter());
+            mapsService.marker.setPosition(bounds.getCenter());
         }
 
-        marker.setVisible(!!county);
+        mapsService.marker.setVisible(!!county);
     };
 
     ctrl.calculateRatio = (left, right) => {
@@ -362,32 +410,11 @@ angular.module("app", ['rzModule', 'ihaochi'])
         $location.search('ratio', highlightRatio);
         $location.search('minAge', minAge);
         $location.search('maxAge', maxAge);
-
     };
 
     ctrl.setupChart = () => {
         const chartXLabels = popAgeSexService.getAgeGroupsLabel(MIN_AGE, MAX_AGE);
-        Plotly.newPlot(chart, [{
-            x: chartXLabels,
-            y: [],
-            name: 'Male',
-            type: 'bar',
-            marker: { color: chroma(_.last(ctrl.legend).color).alpha(ctrl.LEGEND_OPACITY).css() }
-        }, {
-            x: chartXLabels,
-            y: [],
-            name: 'Female',
-            type: 'bar',
-            marker: { color: chroma(_.first(ctrl.legend).color).alpha(ctrl.LEGEND_OPACITY).css()}
-        }], {
-            xaxis: {title: 'Age Group'},
-            yaxis: {title: 'Population'},
-            barmode: 'group'
-        });
-
-        window.addEventListener("resize", _.debounce(() => {
-            Plotly.Plots.resize(chart);
-        }, 500));
+        chartService.setupChart(chartXLabels, ctrl.LEGEND_OPACITY);
     };
 
     ctrl.updateChart = () => {
@@ -417,13 +444,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
             data.range = `${minAge} to ${popAgeSexService.displayMaxAge(maxAge)}`;
         }
 
-        chart.layout.title = defaultChartTitleTemplate(data);
-        chart.data.forEach((bar, i) => {
-            bar.x = chartXLabels;
-            bar.y = popPyramidSeries.map(set => set[i]);
-        });
-
-        Plotly.redraw(chart);
+        chartService.redrawChart(defaultChartTitleTemplate(data), chartXLabels, popPyramidSeries);
     };
 
     ctrl.setupSearchVariables = () => {
@@ -466,7 +487,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
             const paths = mapsService.kmlToPaths(county.get("geometry"));
 
             const shape = new google.maps.Polygon(_.assign({
-                map,
+                map: mapsService.map,
                 paths
             }, DEFAULT_COUNTY_OPTIONS));
 
@@ -494,7 +515,7 @@ angular.module("app", ['rzModule', 'ihaochi'])
 
             paths.forEach(path => {
                 new google.maps.Polyline({
-                    map,
+                    map: mapsService.map,
                     path,
                     strokeColor: "#555",
                     strokeWeight: 1.5
