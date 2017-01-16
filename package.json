@@ -1,5 +1,5 @@
 {
-  "name": "us-county-level-sex-ratio-by-age-group",
+  "name": "sex-ratio",
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "compile-all": "npm run compile-babel && npm run ng-annotate && npm run uglify && npm run mincss",
     "build": "npm run minify-json && npm run compile-all"
   },
-  "repository": "git@github.com:haochi/us-county-level-sex-ratio-by-age-group.git",
+  "repository": "git@github.com:haochi/sex-ratio.git",
   "author": "Haochi Chen <github@ihaochi.com>",
   "license": "MIT",
   "devDependencies": {
