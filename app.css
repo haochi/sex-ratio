@@ -63,12 +63,32 @@ body {
     height: 100vh;
 }
 
-.share-buttons {
+.share-container {
     display: flex;
-    align-items: flex-start;
 }
 
-.share-button iframe {
-    border: 0;
-    overflow: hidden;
+.share-links {
+    flex: 1;
+    display: flex;
+}
+
+.share-links a {
+    text-align: center;
+    flex: 1;
+    color: #428bca;
+    text-decoration: none;
+}
+
+.share-links a:hover {
+    text-decoration: underline;
+}
+
+.credit-container {
+    text-align: center;
+    border-top: 1px solid #777;
+    padding: 10px;
+}
+
+.haochinfinity {
+    width: 16px;
 }
