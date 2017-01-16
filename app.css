@@ -92,3 +92,9 @@ body {
 .haochinfinity {
     width: 16px;
 }
+
+@media (max-width: 640px) {
+    .share-links span {
+        display: none;
+    }
+}
