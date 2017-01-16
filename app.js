@@ -245,7 +245,8 @@ angular.module("app", ['rzModule', 'ihaochi'])
         }], {
             xaxis: {title: 'Age Group'},
             yaxis: {title: 'Population'},
-            barmode: 'group'
+            barmode: 'group',
+            legend: { orientation: "h" }
         });
 
         this.$window.addEventListener("resize", _.debounce(() => {
