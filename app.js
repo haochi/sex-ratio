@@ -530,9 +530,9 @@ angular.module("app", ['rzModule', 'ihaochi'])
     // init
     ctrl.loading = true;
     $q.all([
-        fusionTableService.loadFromFile("./data/population.json"),
-        fusionTableService.loadFromFile("./data/county-shapes.json"),
-        fusionTableService.loadFromFile("./data/state-shapes.json")
+        fusionTableService.loadFromFile("./dist/population.json"),
+        fusionTableService.loadFromFile("./dist/county-shapes.json"),
+        fusionTableService.loadFromFile("./dist/state-shapes.json")
     ]).then(function ([populationResult, countyShapeResult, stateShapeResult]) {
         ctrl.counties = dataManipulationService.join([
             [populationResult, "GEO.id2", allAgeGroupsArray],

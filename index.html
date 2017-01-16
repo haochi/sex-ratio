@@ -1,5 +1,5 @@
 <!doctype html>
-<html ng-app="app">
+<html ng-app="app" ng-strict-di>
 <head>
     <title>US County Level Sex Ratio By Age Group</title>
     <meta property="og:url" content="http://ihaochi.com/us-county-level-sex-ratio-by-age-group/" />
@@ -11,7 +11,7 @@
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/angularjs-slider/6.0.0/rzslider.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css">
-    <link rel="stylesheet" href="app.css">
+    <link rel="stylesheet" href="./dist/app.css">
 </head>
 <body>
 <div class="app-container" ng-controller="AppController as appCtrl">
@@ -106,6 +106,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/angularjs-slider/6.0.0/rzslider.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/1.2.1/chroma.min.js"></script>
 <script src="https://cdn.rawgit.com/haochi/angular-mouse-tooltip/b495ecb1/dist/angular-mouse-tooltip.min.js"></script>
-<script src="app.js"></script>
+<script src="./dist/app.js"></script>
 </body>
 </html>
